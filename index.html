@@ -1,116 +1,45 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Miray Orb</title>
+recognition.onresult = (event) => {
+  const raw = event.results[0][0].transcript.trim();
+  const command = raw.toLowerCase();
+  statusText.innerText = "Dedin ki: " + raw;
 
-<style>
-body {
-  margin: 0;
-  background: black;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  flex-direction: column;
-  color: white;
-  font-family: Arial, sans-serif;
-}
+  // Sorguyu yakala:
+  // 1) "araştır ..." -> araştır'dan sonrasını al
+  // 2) "nedir/ne demek/kimdir/nasıl" -> tüm cümleyi sorgu say
+  let query = "";
 
-.orb {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #33ff99, #00ff88, #009944);
-  box-shadow: 0 0 35px #00ff88;
-  animation: breathe 2.5s infinite ease-in-out;
-}
+  if (command.includes("araştır")) {
+    query = raw.toLowerCase().split("araştır").pop().trim();
+  } else if (
+    command.includes("nedir") ||
+    command.includes("ne demek") ||
+    command.includes("kimdir") ||
+    command.includes("nasıl")
+  ) {
+    query = raw.trim();
+  }
 
-@keyframes breathe {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
-}
-
-.status {
-  margin-top: 30px;
-  font-size: 18px;
-  opacity: 0.8;
-}
-</style>
-</head>
-
-<body>
-
-<div class="orb"></div>
-<div class="status">Hazırım Bünyamin...</div>
-
-<script>
-const orb = document.querySelector('.orb');
-const statusText = document.querySelector('.status');
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-function speak(text) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "tr-TR";
-  u.rate = 1.0;
-  u.pitch = 0.9;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-}
-
-function startListening() {
-  if (!SpeechRecognition) {
-    statusText.innerText = "Tarayıcı desteklemiyor";
-    speak("Bu tarayıcı dinlemeyi desteklemiyor");
+  // Basit cevaplar
+  if (command.includes("merhaba")) {
+    speak("Efendim Bünyamin");
+    return;
+  }
+  if (command.includes("nasılsın")) {
+    speak("Elhamdülillah, siz nasılsınız");
     return;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = "tr-TR";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+  // Araştırma cevabı (şimdilik özet)
+  if (query) {
+    speak(`${query} konusunda kısa bir özet sunayım.`);
 
-  recognition.onstart = () => {
-    statusText.innerText = "Dinliyorum Bünyamin...";
-  };
-
-  recognition.onresult = (event) => {
-    const command = event.results[0][0].transcript.toLowerCase();
-    statusText.innerText = "Dedin ki: " + command;
-
-    if (command.includes("merhaba")) {
-      speak("Efendim Bünyamin");
+    if (query.includes("sabır")) {
+      speak("Sabır, Allah rızası için zorluğa dayanmak; acele edip vazgeçmemek, dil ve davranışta taşkınlık göstermemektir. Üç yönü vardır: musibete sabır, günaha karşı sabır ve ibadete devamda sabır. Sabır, kalbi olgunlaştırır ve insanı istikamette tutar.");
+    } else {
+      speak("Bu konuyu biraz daha açar mısınız Bünyamin? İsterseniz bir cümleyle neyi özellikle merak ettiğinizi söyleyin.");
     }
-    else if (command.includes("nasılsın")) {
-      speak("Elhamdülillah, siz nasılsınız");
-    }
-    else if (command.includes("araştır")) {
-      speak("Ne araştırmamı istersiniz");
-    }
-    else {
-      speak("Anlayamadım Bünyamin");
-    }
-  };
+    return;
+  }
 
-  recognition.onerror = () => {
-    statusText.innerText = "Dinleme hatası";
-  };
-
-  recognition.onend = () => {
-    statusText.innerText = "Hazırım Bünyamin...";
-  };
-
-  recognition.start();
-}
-
-orb.addEventListener("click", () => {
-  speak("Efendim Bünyamin");
-  startListening();
-});
-</script>
-
-</body>
-</html>
+  speak("Anlayamadım Bünyamin. Örnek: 'Sabır nedir araştır' ya da 'Sabır nedir?'");
+};
