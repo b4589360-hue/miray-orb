@@ -11,15 +11,14 @@
     @keyframes breathe{0%{transform:scale(1)}50%{transform:scale(1.14)}100%{transform:scale(1)}}
     .panel{width:min(700px,92vw);margin-top:22px;text-align:center;opacity:.95}
     .status{font-size:14px;opacity:.9;min-height:22px;margin-bottom:10px}
-    .hint{font-size:12px;opacity:.75;line-height:1.35;margin-top:10px}
     .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
     button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#eafff5;padding:10px 14px;border-radius:14px;font-size:14px;cursor:pointer}
     button:active{transform:scale(.98)}
-    .pill{display:inline-block;margin:6px 6px 0 6px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:12px;opacity:.9}
     .log{margin-top:12px;font-size:13px;opacity:.85;word-break:break-word;min-height:22px}
     .answer{margin-top:10px;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;line-height:1.5}
     .answer b{color:#b7ffe1}
     .small{opacity:.8;font-size:12px;margin-top:8px}
+    .hint{font-size:12px;opacity:.75;line-height:1.35;margin-top:10px}
   </style>
 </head>
 <body>
@@ -30,23 +29,17 @@
     <div id="status" class="status">Hazır</div>
 
     <div class="row">
-      <button id="btnEfendim">Efendim</button>
       <button id="btnListen">Dinle</button>
       <button id="btnStop">Durdur</button>
-    </div>
-
-    <div class="row">
-      <span class="pill">“Efendim Bünyamin” de</span>
-      <span class="pill">“Sabır nedir araştır” de</span>
-      <span class="pill">“Mira bana … araştır” de</span>
+      <button id="btnSpeak">Konuş (Özeti Oku)</button>
     </div>
 
     <div id="log" class="log"></div>
     <div id="answer" class="answer" style="display:none;"></div>
 
     <div class="hint">
-      Not: “Araştır” komutu artık Wikipedia’dan çekip özetleyerek anlatır. Bulamazsa Google önerebilir.<br/>
-      Mikrofon izni: Chrome → Site ayarları → Mikrofon → İzin ver (gizli sekme kullanma).
+      Örnek: “Sabır nedir araştır”<br/>
+      Not: Araştırınca özet mutlaka ekranda görünür. Ses çıkmazsa “Konuş”a bas.
     </div>
   </div>
 
@@ -55,12 +48,17 @@
   const statusEl = document.getElementById("status");
   const logEl = document.getElementById("log");
   const answerEl = document.getElementById("answer");
-  const btnEfendim = document.getElementById("btnEfendim");
   const btnListen = document.getElementById("btnListen");
   const btnStop = document.getElementById("btnStop");
+  const btnSpeak = document.getElementById("btnSpeak");
+
+  let lastSpokenText = "";
 
   function setStatus(t){ statusEl.textContent = t; }
   function setLog(t){ logEl.textContent = t || ""; }
+  function escapeHtml(s){
+    return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
   function showAnswer(title, text, source){
     answerEl.style.display = "block";
     answerEl.innerHTML =
@@ -72,25 +70,12 @@
     answerEl.style.display = "none";
     answerEl.innerHTML = "";
   }
-  function escapeHtml(s){
-    return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-  }
 
   // ---------- TTS ----------
   function pickTurkishVoice(){
     const voices = speechSynthesis.getVoices() || [];
     const tr = voices.filter(v => (v.lang || "").toLowerCase().startsWith("tr"));
-    if(!tr.length) return null;
-    const prefer = ["google","turkish","tr-tr","android"];
-    let best = tr[0], bestScore = -1;
-    for(const v of tr){
-      const name = (v.name||"").toLowerCase();
-      let score = 0;
-      for(const p of prefer) if(name.includes(p)) score++;
-      if(v.localService) score += 1;
-      if(score > bestScore){ bestScore = score; best = v; }
-    }
-    return best;
+    return tr[0] || null;
   }
 
   function speak(text){
@@ -102,9 +87,14 @@
       u.pitch = 0.9;
       const v = pickTurkishVoice();
       if(v) u.voice = v;
+
+      u.onstart = () => setStatus("Konuşuyorum…");
+      u.onend = () => setStatus("Hazır");
+      u.onerror = () => setStatus("Ses çıkmadı. 'Konuş' ile tekrar dene.");
+
       speechSynthesis.speak(u);
     }catch(e){
-      alert("Ses sistemi hata verdi: " + e.message);
+      setStatus("Ses sistemi hata: " + e.message);
     }
   }
   speechSynthesis.onvoiceschanged = () => {};
@@ -155,6 +145,65 @@
     setStatus("Durduruldu");
   }
 
+  // ---------- Araştırma (Wikipedia) ----------
+  async function fetchJson(url){
+    const r = await fetch(url, { method:"GET" });
+    if(!r.ok) throw new Error("http_" + r.status);
+    return await r.json();
+  }
+
+  function summarizeText(text){
+    const t = (text||"").trim();
+    if(!t) return "";
+    const sentences = t.split(/(?<=[.!?])\s+/);
+    const pick = sentences.slice(0, 6).join(" ");
+    return pick.length > 900 ? pick.slice(0, 900) + "…" : pick;
+  }
+
+  async function wikiSummaryTR(query){
+    const q = query.trim();
+    const directUrl = "https://tr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(q);
+    try{
+      const j = await fetchJson(directUrl);
+      if(j?.extract){
+        return { title: j.title || q, extract: j.extract, source: (j?.content_urls?.desktop?.page) || "Wikipedia" };
+      }
+    }catch(e){}
+
+    const searchUrl = "https://tr.wikipedia.org/w/rest.php/v1/search/title?q=" + encodeURIComponent(q) + "&limit=1";
+    const s = await fetchJson(searchUrl);
+    const title = s?.pages?.[0]?.title;
+    if(!title) throw new Error("not_found");
+
+    const j2 = await fetchJson("https://tr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+    if(!j2?.extract) throw new Error("not_found");
+    return { title: j2.title || title, extract: j2.extract, source: (j2?.content_urls?.desktop?.page) || "Wikipedia" };
+  }
+
+  async function researchAndExplain(query){
+    clearAnswer();
+    setStatus("Araştırıyorum…");
+    setLog("Araştır: " + query);
+
+    try{
+      const r = await wikiSummaryTR(query);
+      const summary = summarizeText(r.extract);
+
+      // 1) MUTLAKA ekrana yaz
+      showAnswer(r.title, summary, r.source);
+
+      // 2) Sonra sesle anlat (olmazsa bile ekranda kalıyor)
+      lastSpokenText = `Bünyamin, ${r.title} hakkında özet: ${summary}`;
+      speak(lastSpokenText);
+
+      setStatus("Hazır");
+    }catch(e){
+      setStatus("Bulamadım");
+      showAnswer("Bulunamadı", "Wikipedia’da uygun özet bulamadım. Başka kelimeyle deneyelim.", "");
+      speak("Bünyamin, bu konuda net bir özet bulamadım. Başka kelimeyle sorar mısınız?");
+    }
+  }
+
   // ---------- Komutlar ----------
   function normalizeTR(s){
     return (s||"").toLowerCase()
@@ -165,7 +214,6 @@
   }
 
   function extractResearchQuery(raw){
-    // "mira bana sabır nedir araştır" -> "sabır nedir"
     let q = (raw||"").trim();
     q = q.replace(/^mira\s*/i,"");
     q = q.replace(/\bbana\b/gi," ");
@@ -177,116 +225,19 @@
     return q;
   }
 
-  async function wikiSummaryTR(query){
-    // Wikipedia REST API (Türkçe)
-    // önce özet dene, yoksa arama yap
-    const q = query.trim();
-    if(!q) throw new Error("empty_query");
-
-    async function fetchJson(url){
-      const r = await fetch(url, { method:"GET" });
-      if(!r.ok) throw new Error("http_" + r.status);
-      return await r.json();
-    }
-
-    // 1) Direkt başlık gibi dene
-    const directUrl = "https://tr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(q);
-    try{
-      const j = await fetchJson(directUrl);
-      if(j?.extract){
-        return {
-          title: j.title || q,
-          extract: j.extract,
-          source: (j?.content_urls?.desktop?.page) || "Wikipedia"
-        };
-      }
-    }catch(e){ /* devam */ }
-
-    // 2) Arama yap, ilk sonucu özetle
-    const searchUrl = "https://tr.wikipedia.org/w/rest.php/v1/search/title?q=" + encodeURIComponent(q) + "&limit=1";
-    const s = await fetchJson(searchUrl);
-    const title = s?.pages?.[0]?.title;
-    if(!title) throw new Error("not_found");
-
-    const j2 = await fetchJson("https://tr.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
-    if(!j2?.extract) throw new Error("not_found");
-    return {
-      title: j2.title || title,
-      extract: j2.extract,
-      source: (j2?.content_urls?.desktop?.page) || "Wikipedia"
-    };
-  }
-
-  function summarizeText(text){
-    // Çok uzunsa kısalt (4-6 cümle)
-    const t = (text||"").trim();
-    if(!t) return "";
-    const sentences = t.split(/(?<=[.!?])\s+/);
-    const pick = sentences.slice(0, 6).join(" ");
-    return pick.length > 900 ? pick.slice(0, 900) + "…" : pick;
-  }
-
-  async function researchAndExplain(query){
-    clearAnswer();
-    setStatus("Araştırıyorum…");
-    setLog("Araştır: " + query);
-
-    try{
-      const r = await wikiSummaryTR(query);
-      const summary = summarizeText(r.extract);
-      showAnswer(r.title, summary, r.source);
-
-      // Tasavvufi/dengeli üslup (kısa)
-      const spoken =
-        `Bünyamin, ${r.title} hakkında özetle: ` +
-        summary.replaceAll("\n"," ");
-      speak(spoken);
-
-      setStatus("Hazır");
-    }catch(e){
-      setStatus("Bulamadım");
-      speak("Bünyamin, bu konuda Wikipedia'da net bir özet bulamadım. Google'da aramamı ister misiniz?");
-      showAnswer("Bulunamadı", "Wikipedia’da uygun özet bulunamadı. İstersen Google’da arayabilirim.", "");
-    }
-  }
-
-  function googleSearch(q){
-    const url = "https://www.google.com/search?q=" + encodeURIComponent(q);
-    window.open(url, "_blank");
-    speak("Google'da arıyorum Bünyamin. " + q);
-    setStatus("Google’da arıyorum…");
-  }
-
   function handleCommand(text){
     const raw = (text||"").trim();
     const n = normalizeTR(raw);
 
-    // Efendim
     if(n.includes("efendim") || n.includes("bunyamin")){
       speak("Efendim Bünyamin. Ne arzu edersiniz?");
       setStatus("Hazır");
       return;
     }
 
-    // "google'da ... ara"
-    if(n.includes("google") && n.includes("ara")){
-      const q = extractResearchQuery(raw).replace(/google'?da/ig,"").replace(/\bara\b/ig,"").trim();
-      if(!q){ speak("Ne arayayım Bünyamin?"); return; }
-      googleSearch(q);
-      return;
-    }
-
-    // "... araştır"
-    if(n.includes("arastir")){
+    if(n.includes("arastir") || n.includes("nedir")){
       const q = extractResearchQuery(raw);
       if(!q){ speak("Ne araştırayım Bünyamin?"); return; }
-      researchAndExplain(q);
-      return;
-    }
-
-    // Soru cümlesi: "nedir" -> araştır+anlat
-    if(n.includes("nedir")){
-      const q = extractResearchQuery(raw);
       researchAndExplain(q);
       return;
     }
@@ -300,9 +251,12 @@
     speak("Efendim Bünyamin.");
     startListening();
   });
-  btnEfendim.addEventListener("click", () => speak("Efendim Bünyamin."));
   btnListen.addEventListener("click", () => startListening());
   btnStop.addEventListener("click", () => stopListening());
+  btnSpeak.addEventListener("click", () => {
+    if(lastSpokenText) speak(lastSpokenText);
+    else speak("Bünyamin, önce bir şey araştır diyiniz.");
+  });
 </script>
 </body>
 </html>
