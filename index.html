@@ -78,6 +78,35 @@
       speak("Efendim Bünyamin");
     });
 speechSynthesis.getVoices();
+// --- Basit dinleme (Chrome Android çalışır) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function listenOnce() {
+  if (!SpeechRecognition) {
+    speak("Bu tarayıcı mikrofonu desteklemiyor Bünyamin.");
+    return;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.lang = "tr-TR";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  speak("Dinliyorum Bünyamin.");
+
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    speak("Şunu duydum: " + text);
+  };
+
+  rec.onerror = () => speak("Mikrofon hatası oldu Bünyamin.");
+  rec.start();
+}
+
+// Küreye çift dokununca dinleme başlasın
+orb.addEventListener("dblclick", () => {
+  listenOnce();
+});
 
   </script>
 </body>
