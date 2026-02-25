@@ -144,3 +144,205 @@
     const prefer = ["google", "turkish", "tr-tr", "android", "male"];
     let best = null;
     let bestScore = -1;
+
+    for(const v of tr){
+      const name = (v.name || "").toLowerCase();
+      let score = 0;
+      for(const p of prefer) if(name.includes(p)) score++;
+      // Yerel sesler bazen daha iyi çalışıyor
+      if(v.localService) score += 1;
+      if(score > bestScore){ bestScore = score; best = v; }
+    }
+    return best || tr[0];
+  }
+
+  function speak(text){
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "tr-TR";
+      u.rate = 1.0;
+      u.pitch = 0.9;
+
+      const v = pickTurkishVoice();
+      if(v) u.voice = v;
+
+      speechSynthesis.speak(u);
+    } catch(e){
+      alert("Ses sistemi hata verdi: " + e.message);
+    }
+  }
+
+  // Ses listesi geç gelirse (Android Chrome)
+  speechSynthesis.onvoiceschanged = () => { /* tetikleyici */ };
+  speechSynthesis.getVoices();
+
+  // ---------- Dinleme (STT) ----------
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+
+  function normalizeTR(s){
+    return (s || "")
+      .toLowerCase()
+      .replaceAll("’","'")
+      .replaceAll("ı","i")
+      .replaceAll("ğ","g")
+      .replaceAll("ş","s")
+      .replaceAll("ç","c")
+      .replaceAll("ö","o")
+      .replaceAll("ü","u")
+      .trim();
+  }
+
+  function cleanQuery(raw){
+    // “mira bana şunu araştır” gibi cümleleri temizle
+    let q = raw || "";
+    q = q.replace(/^[\s,]+|[\s,]+$/g,"");
+    // baştaki hitapları kırp
+    q = q.replace(/^mira\s*/i,"");
+    q = q.replace(/^bunyamin\s*/i,"");
+    q = q.replace(/^efendim\s*/i,"");
+    q = q.replace(/\bbana\b/gi,"");
+    q = q.replace(/\blutfen\b/gi,"");
+    q = q.replace(/\bya\b/gi,"");
+    q = q.replace(/\bsunu\b/gi,"");
+    q = q.replace(/\bsunu\b/gi,"");
+    q = q.replace(/\bşunu\b/gi,"");
+    q = q.replace(/\bsunu\b/gi,"");
+    q = q.replace(/\barastir\b/gi,"");
+    q = q.replace(/\bara\b/gi,"");
+    q = q.replace(/\bgoogle'da\b/gi,"");
+    q = q.replace(/\bgoogleda\b/gi,"");
+    q = q.replace(/\bgoogle\b/gi,"");
+    q = q.replace(/\s+/g," ").trim();
+    return q;
+  }
+
+  function googleSearch(q){
+    const query = (q || "").trim();
+    if(!query){
+      speak("Ne araştırmamı istersiniz Bünyamin?");
+      setStatus("Sorgu bekliyorum…");
+      return;
+    }
+    const url = "https://www.google.com/search?q=" + encodeURIComponent(query);
+    setLog("Google’da arıyorum: " + query);
+    setStatus("Google’da arıyorum…");
+    // yeni sekme açmayı bazı telefonlar engelleyebilir; yine de deneriz
+    window.open(url, "_blank");
+    speak("Araştırıyorum Bünyamin. " + query);
+  }
+
+  function ensureRecognition(){
+    if(!SpeechRecognition){
+      alert("Bu tarayıcı ses tanımayı desteklemiyor. Chrome ile deneyin.");
+      return false;
+    }
+    if(recognition) return true;
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "tr-TR";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      listening = true;
+      orb.classList.add("listening");
+      setStatus("Dinliyorum Bünyamin…");
+    };
+
+    recognition.onerror = (e) => {
+      listening = false;
+      orb.classList.remove("listening");
+      // izin hatası vs
+      if(e && e.error){
+        setStatus("Dinleme hatası: " + e.error);
+      } else {
+        setStatus("Dinleme hatası");
+      }
+    };
+
+    recognition.onend = () => {
+      listening = false;
+      orb.classList.remove("listening");
+      // otomatik tekrar başlatmayalım (tarayıcı bazen izin isteme döngüsü yapar)
+      if(statusEl.textContent.startsWith("Dinliyorum")){
+        setStatus("Hazır");
+      }
+    };
+
+    recognition.onresult = (event) => {
+      const said = event.results?.[0]?.[0]?.transcript || "";
+      setLog("Sen: " + said);
+      handleCommand(said);
+    };
+
+    return true;
+  }
+
+  function startListening(){
+    if(!ensureRecognition()) return;
+    try {
+      recognition.start();
+    } catch(e){
+      // start üst üste çağrılırsa hata verebilir
+      setStatus("Zaten dinliyorum…");
+    }
+  }
+
+  function stopListening(){
+    if(recognition){
+      try { recognition.stop(); } catch(e){}
+    }
+    listening = false;
+    orb.classList.remove("listening");
+    setStatus("Durduruldu");
+  }
+
+  // ---------- Komut Mantığı ----------
+  function handleCommand(text){
+    const raw = (text || "").trim();
+    const n = normalizeTR(raw);
+
+    // 1) Selam / efendim
+    if(n.includes("efendim") || n.includes("bunyamin")){
+      speak("Efendim Bünyamin. Ne arzu edersiniz?");
+      setStatus("Hazır");
+      return;
+    }
+
+    // 2) “... araştır” / “google’da ... ara”
+    const hasArastir = n.includes("arastir");
+    const hasAra = n.includes(" googleda ") || n.startsWith("googleda") || n.includes("google'da") || n.includes(" google da ") || n.includes(" ara ");
+
+    if(hasArastir || hasAra){
+      const q = cleanQuery(raw);
+      googleSearch(q);
+      return;
+    }
+
+    // 3) “sabır nedir” gibi soru geldi ama "araştır" demedi -> yine de araştır
+    // (sen özellikle "araştır" diyorsun ama bazen unutuluyor)
+    if(n.endsWith("nedir") || n.includes("nedir ")){
+      googleSearch(cleanQuery(raw));
+      return;
+    }
+
+    // 4) Anlamadım
+    speak("Anlayamadım Bünyamin. Örnek: Sabır nedir araştır ya da Google'da sabır nedir ara.");
+    setStatus("Hazır");
+  }
+
+  // ---------- UI ----------
+  orb.addEventListener("click", () => {
+    speak("Efendim Bünyamin.");
+    startListening();
+  });
+
+  btnEfendim.addEventListener("click", () => speak("Efendim Bünyamin."));
+  btnListen.addEventListener("click", () => startListening());
+  btnStop.addEventListener("click", () => stopListening());
+</script>
+</body>
+</html>
