@@ -1,47 +1,82 @@
-<> 
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Miray Orb</title>
-
   <style>
-    body {
-      margin: 0;
-      background: black;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+    body{
+      margin:0;
+      background:#000;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      user-select:none;
     }
-
-    .orb {
-      width: 161px;
-      height: 160px;
-      border-radius: 50%;
+    .orb{
+      width:160px;height:160px;border-radius:50%;
       background: radial-gradient(circle, #33ff99, #00ff88, #009944);
       box-shadow: 0 0 35px #00ff88;
       animation: breathe 2.5s infinite ease-in-out;
+      cursor:pointer;
     }
-
-    @keyframes breathe {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
+    @keyframes breathe{
+      0%{transform:scale(1)}
+      50%{transform:scale(1.15)}
+      100%{transform:scale(1)}
+    }
+    .hint{
+      position:fixed;
+      bottom:18px;
+      left:0; right:0;
+      text-align:center;
+      color:#bdbdbd;
+      font-size:14px;
+      opacity:.85;
     }
   </style>
 </head>
 
 <body>
-  <div class="orb"></div>
+  <div class="orb" id="orb" aria-label="Miray orb"></div>
+  <div class="hint">Küreye dokun: “Efendim Bünyamin”</div>
 
-  <script>const orb = document.querySelector('.orb');
+  <script>
+    const orb = document.getElementById("orb");
 
-orb.addEventListener('click', () => {
-  const msg = new SpeechSynthesisUtterance('Efendim Bünyamin');
-  msg.lang = 'tr-TR';
-  window.speechSynthesis.speak(msg);
+    // Sesleri yüklemeye çalış (bazı cihazlarda gecikmeli geliyor)
+    function pickTurkishVoice() {
+      const voices = speechSynthesis.getVoices() || [];
+      return voices.find(v => (v.lang || "").toLowerCase().startsWith("tr")) || null;
+    }
+
+    function speak(text){
+      try{
+        // Bazı telefonlarda eski konuşmayı durdurmak gerekiyor
+        speechSynthesis.cancel();
+
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "tr-TR";
+        u.rate = 1.0;
+        u.pitch = 0.9;
+
+        const v = pickTurkishVoice();
+        if(v) u.voice = v;
+
+        speechSynthesis.speak(u);
+      }catch(e){
+        alert("Ses sistemi hata verdi: " + e.message);
+      }
+    }
+
+    // Ses listesi geç gelirse tekrar dene
+    speechSynthesis.onvoiceschanged = () => { /* sadece tetikleyici */ };
+
+    orb.addEventListener("click", () => {
+      speak("Efendim Bünyamin");
+    });
   </script>
 </body>
 </html>
