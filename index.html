@@ -2,197 +2,145 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bünyamin Orb</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Miray Orb</title>
   <style>
-    body{margin:0;background:#000;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:system-ui,-apple-system,Arial;color:#fff}
-    .orb{width:170px;height:170px;border-radius:50%;
-      background:radial-gradient(circle,#33ff99,#00ff88,#009944);
-      box-shadow:0 0 40px #00ff88; animation:breathe 2.5s infinite ease-in-out;
-      position:relative;
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #d7ffe9;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow: hidden;
     }
-    .ring{position:absolute;inset:-18px;border-radius:50%;border:2px solid rgba(0,255,136,.18);filter:blur(.2px)}
-    .listening .orb{box-shadow:0 0 70px #00ff88}
-    @keyframes breathe{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
-    .ui{position:fixed;left:0;right:0;bottom:22px;text-align:center;padding:0 16px}
-    .status{opacity:.9;font-size:16px;margin-bottom:10px}
-    .hint{opacity:.7;font-size:13px;line-height:1.35}
-    .btns{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap}
-    button{background:#111;border:1px solid rgba(255,255,255,.14);color:#fff;padding:10px 12px;border-radius:12px;font-size:14px}
-    button:active{transform:scale(.98)}
-    .chip{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);padding:6px 10px;border-radius:999px;margin:6px 4px;font-size:12px;opacity:.9}
+    .orb {
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #33ff99, #00ff88, #009944);
+      box-shadow: 0 0 45px #00ff88;
+      animation: breathe 2.6s infinite ease-in-out;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .orb.listening {
+      box-shadow: 0 0 70px #00ffcc;
+      filter: saturate(1.2);
+    }
+    @keyframes breathe {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.14); }
+      100% { transform: scale(1); }
+    }
+    .panel {
+      width: min(560px, 92vw);
+      margin-top: 22px;
+      text-align: center;
+      opacity: 0.95;
+    }
+    .status {
+      font-size: 14px;
+      opacity: 0.9;
+      min-height: 22px;
+      margin-bottom: 10px;
+    }
+    .hint {
+      font-size: 12px;
+      opacity: 0.75;
+      line-height: 1.35;
+      margin-top: 10px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    button {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: #eafff5;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    .pill {
+      display: inline-block;
+      margin: 6px 6px 0 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .log {
+      margin-top: 12px;
+      font-size: 13px;
+      opacity: 0.85;
+      word-break: break-word;
+      min-height: 22px;
+    }
   </style>
 </head>
 <body>
-  <div id="wrap">
-    <div class="orb" id="orb" aria-label="Bünyamin orb">
-      <div class="ring"></div>
-    </div>
-  </div>
 
-  <div class="ui">
-    <div class="status" id="status">Hazır…</div>
-    <div>
-      <span class="chip">“Efendim Bünyamin” de</span>
-      <span class="chip">“Sabır nedir araştır” de</span>
-      <span class="chip">“Google’da … ara” de</span>
-    </div>
-    <div class="btns">
-      <button id="btnWake">Efendim</button>
+  <div id="orb" class="orb" title="Dokun: Efendim + Dinle"></div>
+
+  <div class="panel">
+    <div id="status" class="status">Hazır</div>
+
+    <div class="row">
+      <button id="btnEfendim">Efendim</button>
       <button id="btnListen">Dinle</button>
       <button id="btnStop">Durdur</button>
     </div>
+
+    <div class="row">
+      <span class="pill">“Efendim Bünyamin” de</span>
+      <span class="pill">“Sabır nedir araştır” de</span>
+      <span class="pill">“Mira bana … araştır” de</span>
+      <span class="pill">“Google’da … ara” de</span>
+    </div>
+
+    <div id="log" class="log"></div>
+
     <div class="hint">
-      Not: Bu sayfa Google’da arama açabilir. Telefon araması/uygulama kontrolü için APK gerekir.
+      Not: Bu sayfa Google’da arama açabilir. Telefon araması/uygulama kontrolü için APK gerekir.<br/>
+      Mikrofon izni için: Chrome → Site ayarları → Mikrofon → İzin ver (gizli sekme kullanma).
     </div>
   </div>
 
-  <script>
-    const orb = document.getElementById("orb");
-    const statusEl = document.getElementById("status");
-    const btnWake = document.getElementById("btnWake");
-    const btnListen = document.getElementById("btnListen");
-    const btnStop = document.getElementById("btnStop");
-    const wrap = document.getElementById("wrap");
+<script>
+  // ---------- Yardımcılar ----------
+  const orb = document.getElementById("orb");
+  const statusEl = document.getElementById("status");
+  const logEl = document.getElementById("log");
+  const btnEfendim = document.getElementById("btnEfendim");
+  const btnListen = document.getElementById("btnListen");
+  const btnStop = document.getElementById("btnStop");
 
-    // --- SES (TTS) ---
-    function speak(text){
-      try{
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = "tr-TR";
-        u.rate = 1.0;
-        u.pitch = 0.9;
-        speechSynthesis.speak(u);
-      }catch(e){
-        alert("Ses hatası: " + e.message);
-      }
-    }
-    speechSynthesis.getVoices();
+  function setStatus(t){ statusEl.textContent = t; }
+  function setLog(t){ logEl.textContent = t || ""; }
 
-    function setStatus(t){ statusEl.textContent = t; }
+  // ---------- Ses (TTS) ----------
+  function pickTurkishVoice(){
+    const voices = speechSynthesis.getVoices() || [];
+    // Önce tr-TR bul
+    const tr = voices.filter(v => (v.lang || "").toLowerCase().startsWith("tr"));
+    if(!tr.length) return null;
 
-    // --- DİNLEME (STT) ---
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let rec = null;
-    let listening = false;
-
-    function initRec(){
-      if(!SR){
-        speak("Bu telefonda tarayıcı konuşmayı yazıya çevirmeyi desteklemiyor.");
-        setStatus("STT desteklenmiyor");
-        return false;
-      }
-      rec = new SR();
-      rec.lang = "tr-TR";
-      rec.continuous = false;
-      rec.interimResults = false;
-
-      rec.onstart = () => {
-        listening = true;
-        document.body.classList.add("listening");
-        setStatus("Dinliyorum Bünyamin…");
-      };
-      rec.onend = () => {
-        listening = false;
-        document.body.classList.remove("listening");
-        if(statusEl.textContent.startsWith("Dinliyorum")) setStatus("Hazır…");
-      };
-      rec.onerror = (e) => {
-        document.body.classList.remove("listening");
-        setStatus("Mikrofon hatası: " + (e.error || "bilinmiyor"));
-        speak("Mikrofon iznini kontrol eder misin Bünyamin?");
-      };
-      rec.onresult = (event) => {
-        const raw = (event.results[0][0].transcript || "").trim();
-        handleCommand(raw);
-      };
-      return true;
-    }
-
-    function startListen(){
-      if(listening) return;
-      if(!rec && !initRec()) return;
-      try{
-        rec.start(); // kullanıcı tıklamasıyla başlatmak şart
-      }catch(e){
-        // bazen "already started" vs.
-      }
-    }
-
-    function stopAll(){
-      try{ if(rec) rec.abort(); }catch(e){}
-      try{ speechSynthesis.cancel(); }catch(e){}
-      setStatus("Hazır…");
-      document.body.classList.remove("listening");
-    }
-
-    // --- KOMUTLAR ---
-    function openGoogleSearch(q){
-      const url = "https://www.google.com/search?q=" + encodeURIComponent(q);
-      window.open(url, "_blank");
-      speak("Araştırıyorum Bünyamin.");
-      setStatus("Google’da arıyorum: " + q);
-    }
-
-    function handleCommand(raw){
-      const cmd = raw.toLowerCase();
-      setStatus("Dedin ki: “" + raw + "”");
-
-      // uyandırma
-      if(cmd.includes("bünyamin") || cmd.includes("efendim")){
-        speak("Efendim Bünyamin. Ne arzu edersin?");
-        return;
-      }
-
-      // "araştır" komutu
-      // örn: "sabır nedir araştır" / "x araştır"
-      if(cmd.includes("araştır")){
-        const q = raw.replace(/araştır/ig,"").trim();
-        if(q.length < 2){
-          speak("Ne araştırmamı istersin Bünyamin? Mesela: Sabır nedir araştır.");
-          return;
-        }
-        openGoogleSearch(q);
-        return;
-      }
-
-      // "google'da ... ara" komutu
-      if(cmd.includes("google") && cmd.includes("ara")){
-        const q = raw
-          .replace(/google(\'?da|’da)?/ig,"")
-          .replace(/ara/ig,"")
-          .trim();
-        if(q.length < 2){
-          speak("Ne arayayım Bünyamin?");
-          return;
-        }
-        openGoogleSearch(q);
-        return;
-      }
-
-      // örnek kısa sohbet
-      if(cmd.includes("nasılsın")){
-        speak("Elhamdülillah iyiyim Bünyamin. Sen nasılsın?");
-        return;
-      }
-
-      speak("Anladım Bünyamin. İstersen '… araştır' diyerek arama yaptırabilirsin.");
-    }
-
-    // --- TIKLAMALAR ---
-    orb.addEventListener("click", () => {
-      // tek dokunuş: dinle
-      startListen();
-    });
-
-    btnWake.addEventListener("click", () => {
-      speak("Efendim Bünyamin. Ne arzu edersin?");
-      setStatus("Efendim Bünyamin…");
-    });
-
-    btnListen.addEventListener("click", () => startListen());
-    btnStop.addEventListener("click", () => stopAll());
-  </script>
-</body>
-</html>
+    // Erkek sesi diye garanti yok; ama genelde Google/Android TTS'te bazı isimler daha tok.
+    // Öncelik sırası:
+    const prefer = ["google", "turkish", "tr-tr", "android", "male"];
+    let best = null;
+    let bestScore = -1;
