@@ -1,170 +1,116 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Miray Orb</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Miray Orb</title>
 
-  <style>
-    body{
-      margin:0;
-      background:black;
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-family: Arial, sans-serif;
-      user-select:none;
-    }
+<style>
+body {
+  margin: 0;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  flex-direction: column;
+  color: white;
+  font-family: Arial, sans-serif;
+}
 
-    .orb{
-      width:170px;
-      height:170px;
-      border-radius:50%;
-      background: radial-gradient(circle, #33ff99, #00ff88, #009944);
-      box-shadow: 0 0 40px #00ff88;
-      animation: breathe 2.6s infinite ease-in-out;
-    }
+.orb {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #33ff99, #00ff88, #009944);
+  box-shadow: 0 0 35px #00ff88;
+  animation: breathe 2.5s infinite ease-in-out;
+}
 
-    .orb.listening{
-      animation: pulse 1.2s infinite ease-in-out;
-      box-shadow: 0 0 70px #00ff88;
-    }
+@keyframes breathe {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
 
-    @keyframes breathe{
-      0%{transform:scale(1)}
-      50%{transform:scale(1.12)}
-      100%{transform:scale(1)}
-    }
-
-    @keyframes pulse{
-      0%{transform:scale(1.05)}
-      50%{transform:scale(1.22)}
-      100%{transform:scale(1.05)}
-    }
-
-    #status{
-      position:fixed;
-      top:14px;
-      left:14px;
-      color:#8fb9a6;
-      font-size:13px;
-    }
-
-    #text{
-      position:fixed;
-      bottom:20px;
-      left:16px;
-      right:16px;
-      color:white;
-      font-size:15px;
-    }
-  </style>
+.status {
+  margin-top: 30px;
+  font-size: 18px;
+  opacity: 0.8;
+}
+</style>
 </head>
 
 <body>
-  <div class="orb" id="orb"></div>
 
-  <div id="status">Hazır</div>
-  <div id="text">Küreye dokun, Bünyamin.</div>
+<div class="orb"></div>
+<div class="status">Hazırım Bünyamin...</div>
 
-  <script>
-    const orb = document.getElementById("orb");
-    const statusEl = document.getElementById("status");
-    const textEl = document.getElementById("text");
+<script>
+const orb = document.querySelector('.orb');
+const statusText = document.querySelector('.status');
 
-    // --------------------
-    // TTS
-    // --------------------
-    function speak(text){
-      try{
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = "tr-TR";
-        u.rate = 0.95;
-        u.pitch = 0.85;
-        speechSynthesis.speak(u);
-      }catch(e){
-        alert("Ses hatası: " + e.message);
-      }
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function speak(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "tr-TR";
+  u.rate = 1.0;
+  u.pitch = 0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+function startListening() {
+  if (!SpeechRecognition) {
+    statusText.innerText = "Tarayıcı desteklemiyor";
+    speak("Bu tarayıcı dinlemeyi desteklemiyor");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "tr-TR";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    statusText.innerText = "Dinliyorum Bünyamin...";
+  };
+
+  recognition.onresult = (event) => {
+    const command = event.results[0][0].transcript.toLowerCase();
+    statusText.innerText = "Dedin ki: " + command;
+
+    if (command.includes("merhaba")) {
+      speak("Efendim Bünyamin");
     }
-
-    speechSynthesis.getVoices();
-
-    // --------------------
-    // STT
-    // --------------------
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let rec = null;
-
-    if(SR){
-      rec = new SR();
-      rec.lang = "tr-TR";
-      rec.continuous = false;
-      rec.interimResults = false;
-
-      rec.onstart = () => {
-        orb.classList.add("listening");
-        statusEl.textContent = "Dinliyor...";
-        textEl.textContent = "Dinliyorum Bünyamin…";
-      };
-
-      rec.onend = () => {
-        orb.classList.remove("listening");
-        statusEl.textContent = "Hazır";
-      };
-
-      rec.onresult = (e) => {
-        const t = e.results[0][0].transcript;
-        textEl.textContent = "Sen: " + t;
-        handleCommand(t);
-      };
-
-      rec.onerror = () => {
-        speak("Mikrofon izni gerekebilir Bünyamin.");
-      };
+    else if (command.includes("nasılsın")) {
+      speak("Elhamdülillah, siz nasılsınız");
     }
-
-    function listenOnce(){
-      if(!rec){
-        speak("Bu tarayıcı dinlemeyi desteklemiyor Bünyamin.");
-        return;
-      }
-      try{
-        rec.abort();
-        rec.start();
-      }catch(e){}
+    else if (command.includes("araştır")) {
+      speak("Ne araştırmamı istersiniz");
     }
-
-    // --------------------
-    // Komutlar
-    // --------------------
-    function handleCommand(text){
-      const low = text.toLowerCase();
-
-      if(low.startsWith("araştır")){
-        const q = text.replace(/^araştır\s*/i,"");
-        speak("Tamam Bünyamin… araştırıyorum.");
-        const url = "https://www.google.com/search?q=" + encodeURIComponent(q);
-        setTimeout(() => window.location.assign(url), 400);
-        return;
-      }
-
-      if(low.includes("selam")){
-        speak("Aleyküm selam Bünyamin.");
-        return;
-      }
-
-      speak("Anladım Bünyamin.");
+    else {
+      speak("Anlayamadım Bünyamin");
     }
+  };
 
-    // --------------------
-    // Küre dokunma
-    // --------------------
-    orb.addEventListener("click", () => {
-      speak("Efendim Bünyamin.");
-      setTimeout(() => listenOnce(), 450);
-    });
-  </script>
+  recognition.onerror = () => {
+    statusText.innerText = "Dinleme hatası";
+  };
+
+  recognition.onend = () => {
+    statusText.innerText = "Hazırım Bünyamin...";
+  };
+
+  recognition.start();
+}
+
+orb.addEventListener("click", () => {
+  speak("Efendim Bünyamin");
+  startListening();
+});
+</script>
+
 </body>
 </html>
