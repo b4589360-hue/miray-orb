@@ -1,45 +1,70 @@
-recognition.onresult = (event) => {
-  const raw = event.results[0][0].transcript.trim();
-  const command = raw.toLowerCase();
-  statusText.innerText = "Dedin ki: " + raw;
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miray Orb</title>
 
-  // Sorguyu yakala:
-  // 1) "araştır ..." -> araştır'dan sonrasını al
-  // 2) "nedir/ne demek/kimdir/nasıl" -> tüm cümleyi sorgu say
-  let query = "";
-
-  if (command.includes("araştır")) {
-    query = raw.toLowerCase().split("araştır").pop().trim();
-  } else if (
-    command.includes("nedir") ||
-    command.includes("ne demek") ||
-    command.includes("kimdir") ||
-    command.includes("nasıl")
-  ) {
-    query = raw.trim();
-  }
-
-  // Basit cevaplar
-  if (command.includes("merhaba")) {
-    speak("Efendim Bünyamin");
-    return;
-  }
-  if (command.includes("nasılsın")) {
-    speak("Elhamdülillah, siz nasılsınız");
-    return;
-  }
-
-  // Araştırma cevabı (şimdilik özet)
-  if (query) {
-    speak(`${query} konusunda kısa bir özet sunayım.`);
-
-    if (query.includes("sabır")) {
-      speak("Sabır, Allah rızası için zorluğa dayanmak; acele edip vazgeçmemek, dil ve davranışta taşkınlık göstermemektir. Üç yönü vardır: musibete sabır, günaha karşı sabır ve ibadete devamda sabır. Sabır, kalbi olgunlaştırır ve insanı istikamette tutar.");
-    } else {
-      speak("Bu konuyu biraz daha açar mısınız Bünyamin? İsterseniz bir cümleyle neyi özellikle merak ettiğinizi söyleyin.");
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: white;
     }
-    return;
-  }
 
-  speak("Anlayamadım Bünyamin. Örnek: 'Sabır nedir araştır' ya da 'Sabır nedir?'");
-};
+    .orb {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #33ff99, #00ff88, #009944);
+      box-shadow: 0 0 35px #00ff88;
+      animation: breathe 2.5s infinite ease-in-out;
+    }
+
+    @keyframes breathe {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    .status {
+      position: fixed;
+      bottom: 40px;
+      font-size: 18px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="orb"></div>
+<div class="status">Hazır...</div>
+
+<script>
+const orb = document.querySelector(".orb");
+const statusText = document.querySelector(".status");
+
+function speak(text) {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "tr-TR";
+  u.rate = 1.0;
+  u.pitch = 0.9;
+  speechSynthesis.speak(u);
+}
+
+orb.addEventListener("click", () => {
+  speak("Efendim Bünyamin");
+});
+
+</script>
+
+</body>
+</html>
