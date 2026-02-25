@@ -2,55 +2,33 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Miray Orb</title>
 
   <style>
-    :root{
-      --bg:#000;
-      --glow:#00ff88;
-      --text:#cfeee0;
-      --muted:#8fb9a6;
-    }
-
     body{
       margin:0;
-      background:var(--bg);
+      background:black;
       height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: Arial, sans-serif;
       user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .wrap{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:18px;
     }
 
     .orb{
       width:170px;
       height:170px;
       border-radius:50%;
-      background: radial-gradient(circle, #33ff99, var(--glow), #009944);
-      box-shadow: 0 0 38px var(--glow);
+      background: radial-gradient(circle, #33ff99, #00ff88, #009944);
+      box-shadow: 0 0 40px #00ff88;
       animation: breathe 2.6s infinite ease-in-out;
-      cursor:pointer;
-      transform: translateZ(0);
     }
 
     .orb.listening{
-      box-shadow: 0 0 60px var(--glow);
-      animation: listenPulse 1.2s infinite ease-in-out;
-    }
-
-    .orb.speaking{
-      box-shadow: 0 0 75px var(--glow);
-      animation: speakPulse 0.9s infinite ease-in-out;
+      animation: pulse 1.2s infinite ease-in-out;
+      box-shadow: 0 0 70px #00ff88;
     }
 
     @keyframes breathe{
@@ -58,238 +36,135 @@
       50%{transform:scale(1.12)}
       100%{transform:scale(1)}
     }
-    @keyframes listenPulse{
-      0%{transform:scale(1.06)}
-      50%{transform:scale(1.20)}
-      100%{transform:scale(1.06)}
-    }
-    @keyframes speakPulse{
-      0%{transform:scale(1.10)}
-      50%{transform:scale(1.24)}
-      100%{transform:scale(1.10)}
+
+    @keyframes pulse{
+      0%{transform:scale(1.05)}
+      50%{transform:scale(1.22)}
+      100%{transform:scale(1.05)}
     }
 
-    .status{
+    #status{
       position:fixed;
       top:14px;
       left:14px;
-      right:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
+      color:#8fb9a6;
       font-size:13px;
-      color:var(--muted);
-      opacity:.95;
-      pointer-events:none;
     }
 
-    .bubble{
+    #text{
       position:fixed;
-      bottom:16px;
+      bottom:20px;
       left:16px;
       right:16px;
-      padding:12px 14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.35);
-      backdrop-filter: blur(8px);
-      border-radius:16px;
-      color:var(--text);
-      font-size:14px;
-      line-height:1.35;
-    }
-
-    .bubble .label{
-      color:#9fd7c0;
-      font-size:12px;
-      margin-bottom:6px;
-      opacity:.9;
+      color:white;
+      font-size:15px;
     }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <div class="orb" id="orb" aria-label="Miray"></div>
-  </div>
+  <div class="orb" id="orb"></div>
 
-  <div class="status">
-    <div id="st">Hazır</div>
-    <div id="hint">Dokun → “Efendim Bünyamin” + dinleme</div>
-  </div>
-
-  <div class="bubble">
-    <div class="label" id="who">Miray</div>
-    <div id="msg">Küreye dokun, Bünyamin.</div>
-  </div>
+  <div id="status">Hazır</div>
+  <div id="text">Küreye dokun, Bünyamin.</div>
 
   <script>
     const orb = document.getElementById("orb");
-    const st = document.getElementById("st");
-    const msg = document.getElementById("msg");
-    const who = document.getElementById("who");
+    const statusEl = document.getElementById("status");
+    const textEl = document.getElementById("text");
 
-    // -----------------------------
-    // TTS (Konuşma)
-    // -----------------------------
-    function pickTurkishVoice() {
-      const voices = speechSynthesis.getVoices() || [];
-      const tr = voices.filter(v => (v.lang || "").toLowerCase().startsWith("tr"));
-      // Erkek sesi garanti değil, ama varsa seçmeye çalış
-      const male = tr.find(v => /male|erkek|man/i.test(v.name));
-      return male || tr[0] || voices[0] || null;
-    }
-
-    function setOrbState(state){
-      orb.classList.remove("listening","speaking");
-      if(state) orb.classList.add(state);
-    }
-
+    // --------------------
+    // TTS
+    // --------------------
     function speak(text){
       try{
-        setOrbState("speaking");
-        who.textContent = "Miray";
-        msg.textContent = text;
-        st.textContent = "Konuşuyor";
-
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = "tr-TR";
         u.rate = 0.95;
         u.pitch = 0.85;
-
-        const v = pickTurkishVoice();
-        if(v) u.voice = v;
-
-        u.onend = () => {
-          setOrbState(null);
-          st.textContent = "Hazır";
-        };
-
         speechSynthesis.speak(u);
       }catch(e){
-        setOrbState(null);
-        st.textContent = "Hata";
-        msg.textContent = "Ses hatası: " + e.message;
+        alert("Ses hatası: " + e.message);
       }
     }
 
-    // Sesleri yüklemeyi tetikle (bazı cihazlarda gerekli)
-    speechSynthesis.onvoiceschanged = () => {};
     speechSynthesis.getVoices();
 
-    // -----------------------------
-    // STT (Dinleme)
-    // -----------------------------
+    // --------------------
+    // STT
+    // --------------------
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     let rec = null;
-    let busy = false;
 
-    function ensureRec(){
-      if(!SR) return null;
-      if(rec) return rec;
-
+    if(SR){
       rec = new SR();
       rec.lang = "tr-TR";
       rec.continuous = false;
       rec.interimResults = false;
-      rec.maxAlternatives = 1;
 
       rec.onstart = () => {
-        busy = true;
-        setOrbState("listening");
-        st.textContent = "Dinliyor";
-        who.textContent = "Sen";
-        msg.textContent = "Dinliyorum Bünyamin…";
+        orb.classList.add("listening");
+        statusEl.textContent = "Dinliyor...";
+        textEl.textContent = "Dinliyorum Bünyamin…";
       };
 
       rec.onend = () => {
-        busy = false;
-        setOrbState(null);
-        st.textContent = "Hazır";
-      };
-
-      rec.onerror = (e) => {
-        busy = false;
-        setOrbState(null);
-        st.textContent = "Hata";
-        speak("Mikrofon izni gerekebilir Bünyamin. Chrome'da site ayarlarından mikrofonu aç.");
+        orb.classList.remove("listening");
+        statusEl.textContent = "Hazır";
       };
 
       rec.onresult = (e) => {
-        const t = (e.results?.[0]?.[0]?.transcript || "").trim();
-        who.textContent = "Sen";
-        msg.textContent = t || "(duyamadım)";
-
-        if(!t){
-          speak("Duyamadım Bünyamin. Bir daha söyle.");
-          return;
-        }
-
+        const t = e.results[0][0].transcript;
+        textEl.textContent = "Sen: " + t;
         handleCommand(t);
       };
 
-      return rec;
+      rec.onerror = () => {
+        speak("Mikrofon izni gerekebilir Bünyamin.");
+      };
     }
 
     function listenOnce(){
-      const r = ensureRec();
-      if(!r){
-        speak("Bu tarayıcı dinlemeyi desteklemiyor Bünyamin. Chrome kullan.");
+      if(!rec){
+        speak("Bu tarayıcı dinlemeyi desteklemiyor Bünyamin.");
         return;
       }
       try{
-        // takılmayı azaltır
-        r.abort();
-        r.start();
-      }catch(_){}
+        rec.abort();
+        rec.start();
+      }catch(e){}
     }
 
-    // -----------------------------
-    // Komut/Üslup (Allah dostu tonu + kısa)
-    // -----------------------------
-    function lower(s){ return (s||"").toLowerCase(); }
-
+    // --------------------
+    // Komutlar
+    // --------------------
     function handleCommand(text){
-      const t = text.trim();
-      const low = lower(t);
+      const low = text.toLowerCase();
 
-      // Araştır komutu
       if(low.startsWith("araştır")){
-        const q = t.replace(/^araştır\s*/i,"").trim();
+        const q = text.replace(/^araştır\s*/i,"");
         speak("Tamam Bünyamin… araştırıyorum.");
-        const url = "https://www.google.com/search?q=" + encodeURIComponent(q || "konu");
-        window.open(url, "_blank");
+        const url = "https://www.google.com/search?q=" + encodeURIComponent(q);
+        setTimeout(() => window.location.assign(url), 400);
         return;
       }
 
-      // Selamlaşma
-      if(low.includes("selam") || low.includes("merhaba")){
-        speak("Aleyküm selam Bünyamin. Kalbin nasıl?");
+      if(low.includes("selam")){
+        speak("Aleyküm selam Bünyamin.");
         return;
       }
 
-      // “Ne haber” vb
-      if(low.includes("ne haber") || low.includes("nasılsın")){
-        speak("Şükür Bünyamin… Senin hâlin daha mühim. Nasılsın?");
-        return;
-      }
-
-      // Genel cevap (kısa, derin)
-      speak("Anladım Bünyamin. İstersen bir cümle daha söyle, iyice kavrayayım.");
+      speak("Anladım Bünyamin.");
     }
 
-    // -----------------------------
-    // Etkileşim
-    // -----------------------------
+    // --------------------
+    // Küre dokunma
+    // --------------------
     orb.addEventListener("click", () => {
-      if(busy) return;
       speak("Efendim Bünyamin.");
-      // Konuşma başlatmak için küçük gecikme
       setTimeout(() => listenOnce(), 450);
     });
-
-    // İlk mesaj
-    msg.textContent = "Küreye dokun, Bünyamin. Ben buradayım.";
   </script>
 </body>
 </html>
